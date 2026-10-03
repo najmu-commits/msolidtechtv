@@ -1,4 +1,4 @@
-# SeeTV - Python Edition
+# MSOLIDTECHTV - Python Edition
 
 This is the Python version of the SeeTV streaming application. All original functionality has been preserved.
 
@@ -47,7 +47,7 @@ gunicorn wsgi:app
 
 Open your browser and go to: `http://localhost:5000`
 
-Enter PIN: **1234**
+Enter PIN: ****
 
 ## Project Structure
 
@@ -85,7 +85,7 @@ Enter PIN: **1234**
 Edit the config section in `app.py` to change:
 - `SUPABASE_URL` - Supabase endpoint
 - `SUPABASE_KEY` - Supabase API key
-- `PIN` - Access PIN (default: 1234)
+- `PIN` - Access PIN 
 
 ## Technology Stack
 
