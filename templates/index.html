@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/MSOLIDLOGO.jpeg') }}">
+<title>MSOLIDTECH TV</title>
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.7.0/dist/shaka-player.compiled.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.0/dist/hls.min.js"></script>
+<style>
+:root {
+  --bg:  url('{{ url_for('static', filename='images/MSOLIDTECH.png') }}'); --surface: #141420; --card:transparent; --border: #333; --bg2: #1a1030; --bg3: #0a0a14;
+  --accent: #e63946; --accent2: #457b9d; --text: #e0e0e0; --muted: #8888aa;
+  --free: #2ecc71; --premium: #f39c12;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background-image:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; padding-top:var(--safe-top); background-attachment: fixed; background-size: cover;}
+
+/* PIN GATE */
+.pin-gate { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; transition:opacity .3s; }
+.pin-gate.hidden { opacity:0; pointer-events:none; }
+.pin-gate .logo { font-size:2.5rem; font-weight:900; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:.3rem; }
+.pin-gate .subtitle { color:var(--muted); margin-bottom:1.5rem; font-size:.85rem; }
+.pin-box { display:flex; gap:.5rem; margin-bottom:.8rem; }
+.pin-box input { width:2.8rem; height:3.2rem; border:2px solid #333; border-radius:10px; background:transparent; color:var(--text); font-size:1.4rem; text-align:center; outline:none; transition:border-color .2s; -webkit-appearance:none; }
+.pin-box input:focus { border-color:var(--accent); }
+.pin-error { color:var(--accent); font-size:.8rem; min-height:1rem; }
+.pin-btn { background:var(--accent); color:#fff; border:none; padding:.7rem 2rem; border-radius:10px; font-size:1rem; cursor:pointer; font-weight:600; margin-top:.5rem; }
+
+/* HEADER */
+.header { background:var(--surface); padding:.7rem 1rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #222; position:sticky; top:0; z-index:100; }
+.header .logo-sm { font-size:1.3rem; font-weight:800; color:var(--accent); }
+.header input.search { background:var(--card); border:1px solid #333; color:var(--text); padding:.5rem .8rem; border-radius:8px; width:180px; outline:none; font-size:.85rem; }
+.header input.search:focus { border-color:var(--accent2); }
+
+/* TABS */
+.tabs { display:flex; gap:.4rem; padding:.8rem 1rem .4rem; overflow-x:auto; scrollbar-width:none; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { padding:.4rem 1rem; border-radius:16px; background:var(--card); border:1px solid #333; color:var(--muted); cursor:pointer; white-space:nowrap; font-size:.8rem; transition:all .2s; }
+.tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* GRID */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.7rem; padding:.7rem; }
+.card { background:var(--card); border-radius:12px; overflow:hidden; cursor:pointer; transition:transform .15s; border:1px solid #222; }
+.card:active { transform:scale(.97); }
+.card img { width:100%; height:100px; object-fit:cover; background:var(--surface); }
+.card-body { padding:.6rem; }
+.card-body h3 { font-size:.85rem; margin-bottom:.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-body .meta { display:flex; gap:.3rem; font-size:.7rem; color:var(--muted); flex-wrap:wrap; }
+.badge { padding:.15rem .4rem; border-radius:4px; font-size:.65rem; font-weight:700; }
+.badge.free { background:#1a3a2a; color:var(--free); }
+.badge.premium { background:#3a2a1a; color:var(--premium); }
+.badge.dash { background:#1a2a3a; color:var(--accent2); }
+
+/* PLAYER */
+.player-overlay { position:fixed; inset:0; background:#000; z-index:200; display:none; flex-direction:column; }
+.player-overlay.open { display:flex; }
+.player-overlay:fullscreen,
+.player-overlay:-webkit-full-screen { background:#000; }
+.player-top { display:flex; align-items:center; justify-content:space-between; padding:.6rem 1rem; background:rgba(0,0,0,.8); }
+.player-top h2 { font-size:1rem; }
+.player-close { background:none; border:none; color:var(--text); font-size:1.5rem; cursor:pointer; }
+.player-container { flex:1; }
+.player-container video { width:100%; height:100%; }
+.player-overlay:fullscreen .player-container,
+.player-overlay:-webkit-full-screen .player-container { height:calc(100vh - 52px); }
+.player-fallback { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); gap:.5rem; text-align:center; padding:1rem; }
+
+.empty { grid-column:1/-1; text-align:center; padding:2rem; color:var(--muted); }
+
+@media(min-width:600px) { .grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); } }
+</style>
+</head>
+<body>
+
+<!-- PIN -->
+<div class="pin-gate" id="pinGate">
+  <div class="logo">MSOLIDTECH TV</div>
+  <div class="subtitle">Enter PIN <a href="{{url_for('admin_login')}}">🔒</a></div>
+  <div class="pin-box" id="pinBox">
+    <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="pinInput(this,0);this.value=this.value.replace(/[^0-9]/g,'')">
+    <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="pinInput(this,1);this.value=this.value.replace(/[^0-9]/g,'')">
+    <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="pinInput(this,2);this.value=this.value.replace(/[^0-9]/g,'')">
+    <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="pinInput(this,3);this.value=this.value.replace(/[^0-9]/g,'')">
+  </div>
+  <div class="pin-error" id="pinError"></div>
+</div>
+
+<div class="header" id="header" style="display:none">
+  <div class="logo-sm">MSOLIDTECH TV</div>
+  <input type="text" class="search" placeholder="Search..." id="searchInput" oninput="renderGrid()">
+</div>
+
+<div class="tabs" id="tabs" style="display:none">
+  <div class="tab active" data-cat="all" onclick="setCat('all',this)">All</div>
+  <div class="tab" data-cat="free" onclick="setCat('free',this)">Free</div>
+  <div class="tab" data-cat="sports" onclick="setCat('sports',this)">Sports</div>
+  <div class="tab" data-cat="movies" onclick="setCat('movies',this)">Movies</div>
+  <div class="tab" data-cat="entertainment" onclick="setCat('entertainment',this)">TV</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="player-overlay" id="playerOverlay">
+  <div class="player-top">
+    <h2 id="playerTitle"></h2>
+    <button class="player-close" onclick="closePlayer()">&times;</button>
+  </div>
+  <div class="player-container" id="playerContainer"></div>
+</div>
+
+<script>
+// === STATE ===
+let channels = [], cat = "all", player = null, hls = null, azamToken = "";
+
+// === API HELPERS ===
+async function apiCall(endpoint, method = "GET", body = null) {
+  const options = {
+    method,
+    headers: { "Content-Type": "application/json" }
+  };
+  if (body) options.body = JSON.stringify(body);
+  
+  try {
+    const res = await fetch(endpoint, options);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return await res.json();
+  } catch(e) {
+    console.error("API call failed:", e);
+    return null;
+  }
+}
+
+// === TOKEN MANAGEMENT ===
+async function refreshToken() {
+  const data = await apiCall("/api/token");
+  if (data && data.token) {
+    azamToken = data.token;
+  }
+}
+
+// Start periodic token refresh
+setInterval(refreshToken, 30000);
+refreshToken(); // Initial refresh
+
+// === PIN ===
+const PI = document.querySelectorAll("#pinBox input");
+const deviceId = localStorage.getItem("tv_device_id") || (() => {
+  const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem("tv_device_id", id);
+  return id;
+})();
+
+function pinInput(el, idx) { if (el.value && idx < 3) PI[idx+1]?.focus(); if (idx === 3 && [...PI].every(i=>i.value)) checkPin(); }
+PI[0].addEventListener("keydown", e => { if (e.key === "Enter") checkPin(); });
+
+async function checkPin() {
+  const pin = [...PI].map(i=>i.value).join("");
+  const result = await apiCall("/api/verify-pin", "POST", { pin, device_id: deviceId });
+  
+  if (result && result.success) {
+    document.getElementById("pinGate").classList.add("hidden");
+    init();
+  } else {
+    document.getElementById("pinError").textContent = result?.error || "Wrong access code";
+    PI.forEach(i=>i.value="");
+    PI[0].focus();
+  }
+}
+
+// === INIT ===
+async function init() {
+  document.getElementById("header").style.display = "flex";
+  document.getElementById("tabs").style.display = "flex";
+  document.getElementById("grid").innerHTML = '<div class="empty">Loading...</div>';
+  await loadChannels();
+}
+
+async function loadChannels() {
+  const data = await apiCall("/api/channels");
+  if (data) {
+    channels = Array.isArray(data) ? data : [];
+    renderGrid();
+  }
+}
+
+// === CATEGORIES ===
+function setCat(c, el) {
+  cat = c;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderGrid();
+}
+
+async function renderGrid() {
+  const q = (document.getElementById("searchInput")?.value || "").toLowerCase();
+  
+  const filterResult = await apiCall("/api/channels/filter", "POST", {
+    category: cat,
+    search: q
+  });
+  
+  const list = filterResult || [];
+  const grid = document.getElementById("grid");
+  
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty">No channels</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(c => `
+    <div class="card" onclick="play('${c.id}')">
+      <img src="${c.img_url||''}" alt="${c.name}" onerror="this.style.display='none'">
+      <div class="card-body">
+        <h3>${c.name}</h3>
+        <div class="meta">
+          <span class="badge ${c.is_free?'free':'premium'}">${c.is_free?'Free':'Prem'}</span>
+          <span class="badge dash">${(c.type||'dash').toUpperCase()}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// === PLAYER ===
+
+// Convert DB channel URL -> direct Azam URL with fresh token
+function directUrl(url) {
+  if (!url) return url;
+  let u = url;
+  // Decode azam-resolve?u=<encoded> wrapper
+  if (u.includes("azam-resolve") || u.includes("?u=")) {
+    try {
+      const q = new URL(u).searchParams;
+      if (q.has("u")) u = decodeURIComponent(q.get("u"));
+    } catch {}
+  }
+  // Inject fresh token if present
+  if (azamToken && /\/tok_[^/]+\//.test(u)) {
+    u = u.replace(/\/tok_[^/]+\//, `/tok_${azamToken}/`);
+  }
+  return u;
+}
+
+async function play(id) {
+  const ch = channels.find(c => c.id === id);
+  if (!ch) return;
+
+  document.getElementById("playerOverlay").classList.add("open");
+  document.getElementById("playerTitle").textContent = ch.name;
+  destroyPlayer();
+
+  const container = document.getElementById("playerContainer");
+
+  if (ch.type === "hls") {
+    const video = document.createElement("video");
+    video.controls = true; video.autoplay = true; video.playsInline = true;
+    video.style.cssText = "width:100%;height:100%";
+    container.appendChild(video);
+
+    if (window.Hls && Hls.isSupported()) {
+      hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+      hls.loadSource(directUrl(ch.url));
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+      hls.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) showErr(container, "HLS failed"); });
+    } else {
+      video.src = directUrl(ch.url); 
+      video.play().catch(()=>{});
+    }
+  } else {
+    const video = document.createElement("video");
+    video.controls = true; video.autoplay = true; video.playsInline = true;
+    video.crossOrigin = "anonymous";
+    video.style.cssText = "width:100%;height:100%";
+    container.appendChild(video);
+
+    try {
+      if (!window.shaka || !shaka.Player.isBrowserSupported()) {
+        showErr(container, "Browser not supported");
+        return;
+      }
+      shaka.polyfill.installAll();
+      player = new shaka.Player();
+      await player.attach(video);
+
+      // DRM: only clearKeys (no license server - same as triberzonetv)
+      if (ch.key && ch.kid) {
+        player.configure({ drm: { clearKeys: { [ch.kid]: ch.key } } });
+      }
+
+      player.configure({
+        streaming: { retryParameters: { maxAttempts: 8, baseDelay: 1000, backoffFactor: 1.5, fuzzFactor: 0.5 }, bufferingGoal: 30, rebufferingGoal: 4, bufferBehind: 60 },
+        manifest: { retryParameters: { maxAttempts: 8, baseDelay: 500 }, dash: { ignoreMinBufferTime: true, autoCorrectDrift: true } }
+      });
+
+      // Token injector (regex-based, robust)
+      const injectTok = (url) => {
+        if (!azamToken || !url) return url;
+        if (/\/tok_[^/]+\//.test(url)) return url.replace(/\/tok_[^/]+\//, `/tok_${azamToken}/`);
+        try {
+          const p = new URL(url);
+          if (!p.hostname.includes("azamtvltd.co.tz")) return p.toString();
+          p.pathname = `/tok_${azamToken}/${p.pathname.replace(/^\/tok_[^/]+\//, "").replace(/^\/+/, "")}`;
+          p.searchParams.delete("cdntoken");
+          return p.toString();
+        } catch { return url; }
+      };
+
+      player.getNetworkingEngine().registerRequestFilter((type, req) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST && type !== shaka.net.NetworkingEngine.RequestType.SEGMENT) return;
+        if (!req.uris || !req.uris[0]) return;
+        req.uris = req.uris.map(u => injectTok(u));
+      });
+
+      // Robust error recovery: refresh token + retry on any error
+      let recovering = false;
+      player.addEventListener("error", async e => {
+        if (e.detail.severity === 1) return;
+        if (recovering) return;
+        recovering = true;
+        try {
+          await refreshToken();
+          if (typeof player.retryStreaming === "function") player.retryStreaming();
+          video.play().catch(() => {});
+        } catch {}
+        setTimeout(() => { recovering = false; }, 5000);
+      });
+
+      // Stall recovery
+      let lastTime = 0, lastPlay = Date.now();
+      setInterval(() => {
+        if (!video || video.paused || video.ended) return;
+        if (video.currentTime > lastTime + 0.1) { lastTime = video.currentTime; lastPlay = Date.now(); return; }
+        if (video.currentTime > 0 && Date.now() - lastPlay > 12000) {
+          lastPlay = Date.now();
+          refreshToken().then(() => { if (typeof player.retryStreaming === "function") player.retryStreaming(); video.play().catch(()=>{}); });
+        }
+      }, 4000);
+
+      await player.load(directUrl(ch.url));
+    } catch(e) {
+      console.error("Player error:", e);
+      showErr(container, "Failed to load");
+    }
+  }
+}
+
+function destroyPlayer() {
+  try { player?.destroy(); } catch {}
+  try { hls?.destroy(); } catch {}
+  player = null; hls = null;
+  document.getElementById("playerContainer").innerHTML = "";
+}
+
+function closePlayer() {
+  destroyPlayer();
+  const overlay = document.getElementById("playerOverlay");
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document).catch(() => {});
+  }
+  overlay.classList.remove("open");
+}
+
+function toggleFullScreen() {
+  const overlay = document.getElementById("playerOverlay");
+  if (!overlay.classList.contains("open")) return;
+
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+  const request = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen;
+
+  if (fullscreenElement === overlay) {
+    if (exit) exit.call(document).catch(() => {});
+    return;
+  }
+
+  if (request) {
+    request.call(overlay).catch(() => {});
+  }
+}
+
+function showErr(container, msg) {
+  container.innerHTML = `<div class="player-fallback"><div style="font-size:2rem">⚠️</div><div>${msg}</div><button onclick="closePlayer()" style="margin-top:1rem;padding:.5rem 1.5rem;border-radius:8px;background:#333;color:#fff;border:none">Close</button></div>`;
+}
+
+document.addEventListener("keydown", e => {
+  const overlay = document.getElementById("playerOverlay");
+  if (e.key === "Escape") closePlayer();
+  if ((e.key === "f" || e.key === "F") && overlay.classList.contains("open")) {
+    e.preventDefault();
+    toggleFullScreen();
+  }
+});
+</script>
+</body>
+</html>

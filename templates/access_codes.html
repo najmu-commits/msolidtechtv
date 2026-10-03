@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/MSOLIDLOGO.jpeg') }}">
+  <title>MSOLIDTECH TV</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-image: url('{{ url_for('static', filename='images/MSOLIDTECH.png') }}');
+      background-size: cover;
+      color: #f3f3f3;
+      padding: 24px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #ff4d5a;
+    }
+    .box {
+      background:transparent;
+      border: 3px solid #2a2a34;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #d5d5d5;
+    }
+    input, button {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      font-size: 16px;
+    }
+    input {
+      width: 90%;
+      background: transparent;
+      color: white;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 94%;
+      background: #e63946;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .code-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .code-list li {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: #1a1a22;
+      border: 1px solid #2a2a34;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .status {
+      color: #66d18b;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Access Codes</h1>
+
+    <div class="box">
+      <form id="codeForm">
+        <label for="label">Customer name</label>
+        <input id="label" name="label" placeholder="e.g. John Smith" required>
+
+        <label for="paid">Status</label>
+        <select id="paid" name="paid" style="width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:transparent;color:rgb(9, 214, 78);margin-bottom:12px;" required>
+          <option value="true">Paid</option>
+          <option value="false">Unpaid</option>
+        </select>
+
+        <label for="expiresDays">Expiry in days</label>
+        <input id="expiresDays" name="expiresDays" type="number" min="1" value="30" required>
+
+        <button type="submit">Generate code</button>
+      </form>
+      <div id="result" style="margin-top: 12px; color: #ffd166;"></div>
+    </div>
+
+    <div class="box">
+      <h2>Existing codes</h2>
+      <ul class="code-list">
+        {% for code, details in access_codes.items() %}
+          <li>
+            <span>{{ details.label }} — {{ code }}</span>
+            <span class="status">{{ 'Used' if details.device_id else 'Available' }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('codeForm');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = document.getElementById('label').value.trim();
+      const paid = document.getElementById('paid').value === 'true';
+      const expiresDays = Number(document.getElementById('expiresDays').value || 30);
+      const res = await fetch('/api/access-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, paid, expires_days: expiresDays })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        result.textContent = `Generated code: ${data.code} for ${data.label}`;
+        location.reload();
+      } else {
+        result.textContent = data.error || 'Failed to generate code';
+      }
+    });
+  </script>
+</body>
+</html>

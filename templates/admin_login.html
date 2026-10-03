@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/MSOLIDLOGO.jpeg') }}">
+  <title>MSOLIDTECH TV</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image: url('{{ url_for('static', filename='images/MSOLIDTECH.png') }}');
+      background-size: cover;
+    }
+    .login-box {
+      width: min(440px, 90vw);
+      background:transparent;
+      border: 1px solid #2a2a34;
+      border-radius: 16px;
+      padding: 30px 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    h1 {
+      margin: 0 0 14px;
+      color: #ff4d5a;
+      text-align: center;
+    }
+    label {
+      display: block;
+      text-align: center;
+      margin-bottom: 8px;
+      color: #d8d8d8;
+    }
+    input, button {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      font-size: 16px;
+    }
+    input {
+      width: 90%;
+      background: transparent;
+      color: white;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 98%;
+      background: #e63946;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .error {
+      color: #ff8c94;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>Admin Login</h1>
+    <form method="POST">
+      <label for="pin">ENTER PIN</label>
+      <input id="pin" name="pin" type="password" maxlength="8" required>
+      <button type="submit">Login</button>
+    </form>
+    <div class="error">{{ error or '' }}</div>
+  </div>
+</body>
+</html>
